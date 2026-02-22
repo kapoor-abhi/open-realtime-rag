@@ -1,6 +1,7 @@
 import base64
 from groq import Groq
-from langfuse.decorators import observe, langfuse_context
+# UPDATED: v3 SDK imports
+from langfuse import observe, get_client
 from app.core.config import get_settings
 
 @observe(name="encode_base64_image")
@@ -15,11 +16,14 @@ def generate_image_caption(image_path: str) -> str:
     client = Groq(api_key=settings.GROQ_API_KEY)
     model_name = "meta-llama/llama-4-scout-17b-16e-instruct"
     
+    # NEW: Instantiate the global Langfuse v3 client to access the active OpenTelemetry context
+    langfuse = get_client()
+    
     try:
         base64_image = encode_image(image_path)
         
-        # 1. Log the input and model name to Langfuse before the call
-        langfuse_context.update_current_observation(
+        # 1. Log the input and model name to the current generation span
+        langfuse.update_current_generation(
             input=f"Analyzing extracted image: {image_path}",
             model=model_name
         )
@@ -47,9 +51,9 @@ def generate_image_caption(image_path: str) -> str:
         
         content = chat_completion.choices[0].message.content
         
-        # 2. Extract token usage from the Groq response and log it to Langfuse
+        # 2. Extract token usage from the Groq response and log it
         if chat_completion.usage:
-            langfuse_context.update_current_observation(
+            langfuse.update_current_generation(
                 output=content,
                 usage={
                     "input": chat_completion.usage.prompt_tokens,
@@ -58,13 +62,13 @@ def generate_image_caption(image_path: str) -> str:
                 }
             )
         else:
-            langfuse_context.update_current_observation(output=content)
+            langfuse.update_current_generation(output=content)
             
         return content
         
     except Exception as e:
-        # 3. If the API fails, flag the trace in Langfuse as an error with the exact message
-        langfuse_context.update_current_observation(
+        # 3. If the API fails, flag the trace in Langfuse as an error
+        langfuse.update_current_generation(
             level="ERROR", 
             status_message=str(e)
         )

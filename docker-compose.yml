@@ -39,7 +39,7 @@ services:
 
   worker:
     build: .
-    # UPDATED: Use the official RQ CLI to bind the worker to the Redis container
+    # Uses the official RQ CLI to bind the worker to the Redis container
     command: rq worker --url redis://redis:6379 default
     env_file: .env
     depends_on:
@@ -47,6 +47,19 @@ services:
       - redis
       - qdrant
     volumes:
+      - ./uploads:/app/uploads
+
+  frontend:
+    build: .
+    # Runs the Streamlit UI on port 8501
+    command: streamlit run frontend.py --server.address=0.0.0.0 --server.port=8501
+    ports:
+      - "8501:8501"
+    env_file: .env
+    depends_on:
+      - api
+    volumes:
+      - .:/app
       - ./uploads:/app/uploads
 
 volumes:
