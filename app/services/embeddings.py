@@ -1,3 +1,4 @@
+#embeddings.py
 from langchain_cohere import CohereEmbeddings
 from app.core.config import get_settings
 

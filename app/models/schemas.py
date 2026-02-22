@@ -1,3 +1,4 @@
+#schemas.py
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -13,6 +14,7 @@ class ChatRequest(BaseModel):
 class SourceCitation(BaseModel):
     page_number: int
     source_file: str
+    image_path: Optional[str] = None
 
 class ChatResponse(BaseModel):
     answer: str
@@ -22,6 +24,7 @@ class DocumentMetadata(BaseModel):
     source_file: str
     page_number: int
     chunk_type: str
+    image_path: Optional[str] = None
 
 class DocumentChunk(BaseModel):
     text: str

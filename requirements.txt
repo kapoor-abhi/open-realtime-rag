@@ -16,3 +16,5 @@ psycopg[binary]==3.2.4
 redis==5.2.1
 rq==2.1.0
 python-multipart==0.0.20
+boto3==1.35.40
+groq==0.13.1

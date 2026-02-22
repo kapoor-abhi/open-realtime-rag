@@ -1,0 +1,108 @@
+#routes.py
+import hashlib
+import os
+from fastapi import APIRouter, UploadFile, File, Depends
+from psycopg_pool import AsyncConnectionPool
+from redis import Redis
+from rq import Queue
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langchain_core.messages import HumanMessage
+
+from app.core.dependencies import get_db_pool, db_manager
+from app.core.config import get_settings
+from app.models.schemas import UploadResponse, ChatRequest, ChatResponse
+from app.graph.workflow import build_graph
+from app.services.storage import StorageService
+
+router = APIRouter()
+
+@router.post("/upload", response_model=UploadResponse)
+async def upload_document(
+    file: UploadFile = File(...),
+    db_pool: AsyncConnectionPool = Depends(get_db_pool)
+):
+    content = await file.read()
+    file_hash = hashlib.sha256(content).hexdigest()
+    
+    async with db_pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "CREATE TABLE IF NOT EXISTS documents (file_hash TEXT PRIMARY KEY, filename TEXT, status TEXT)"
+            )
+            
+            await cur.execute(
+                "SELECT status FROM documents WHERE file_hash = %s", 
+                (file_hash,)
+            )
+            result = await cur.fetchone()
+            
+            if result:
+                return UploadResponse(
+                    status="Document already indexed",
+                    task_id="None",
+                    file_hash=file_hash
+                )
+            
+            await cur.execute(
+                "INSERT INTO documents (file_hash, filename, status) VALUES (%s, %s, %s)",
+                (file_hash, file.filename, "PENDING")
+            )
+    
+    os.makedirs("uploads", exist_ok=True)
+    file_path = f"uploads/{file_hash}_{file.filename}"
+    with open(file_path, "wb") as f:
+        f.write(content)
+        
+    storage = StorageService()
+    storage.upload_file(file_path, f"documents/{file_hash}_{file.filename}")
+        
+    settings = get_settings()
+    redis_conn = Redis.from_url(settings.REDIS_BROKER_URL)
+    q = Queue(connection=redis_conn)
+    job = q.enqueue("worker.process_document", file_path, file.filename, file_hash, job_timeout=1200)
+    
+    return UploadResponse(
+        status="Processing started",
+        task_id=job.get_id(),
+        file_hash=file_hash
+    )
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest, db_pool: AsyncConnectionPool = Depends(get_db_pool)):
+    checkpointer = AsyncPostgresSaver(db_pool)
+    await checkpointer.setup()
+    
+    graph = build_graph(checkpointer)
+    
+    config = {"configurable": {"thread_id": request.thread_id}}
+    
+    initial_state = {
+        "messages": [HumanMessage(content=request.query)],
+        "query": request.query,
+        "page_number": None,
+        "source_file": None
+    }
+    
+    result = await graph.ainvoke(initial_state, config)
+    
+    return ChatResponse(
+        answer=result["final_answer"],
+        citations=result.get("citations", [])
+    )
+
+@router.get("/document/{file_hash}/status")
+async def get_document_status(
+    file_hash: str, 
+    db_pool: AsyncConnectionPool = Depends(get_db_pool)
+):
+    async with db_pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT status FROM documents WHERE file_hash = %s", 
+                (file_hash,)
+            )
+            result = await cur.fetchone()
+            if result:
+                return {"file_hash": file_hash, "status": result[0]}
+            
+            return {"file_hash": file_hash, "status": "NOT_FOUND"}

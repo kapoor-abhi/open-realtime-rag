@@ -1,3 +1,4 @@
+#config.py
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,6 +20,8 @@ class Settings(BaseSettings):
     CLOUDFLARE_R2_ACCESS_KEY_ID: str
     CLOUDFLARE_R2_SECRET_ACCESS_KEY: str
     CLOUDFLARE_R2_BUCKET_NAME: str
+    HUGGINGFACE_API_KEY: str
+    CLOUDFLARE_R2_PUBLIC_URL: str
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

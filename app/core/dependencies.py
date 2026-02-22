@@ -16,7 +16,15 @@ db_manager = DatabaseManager()
 
 async def init_services(settings: Settings):
     postgres_uri = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-    db_manager.pool = AsyncConnectionPool(postgres_uri, open=True)
+    
+    # --- UPDATED: Added kwargs={"autocommit": True} to fix the LangGraph migration error ---
+    db_manager.pool = AsyncConnectionPool(
+        postgres_uri, 
+        open=True, 
+        kwargs={"autocommit": True}
+    )
+    # ----------------------------------------------------------------------------------------
+    
     db_manager.qdrant = AsyncQdrantClient(url=settings.QDRANT_URL)
     db_manager.redis_broker = Redis.from_url(settings.REDIS_BROKER_URL, decode_responses=True)
     db_manager.redis_cache = Redis.from_url(settings.REDIS_CACHE_URL, decode_responses=True)
