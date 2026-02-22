@@ -1,4 +1,3 @@
-#nodes.py
 import json
 import hashlib
 from typing import Optional
@@ -22,9 +21,11 @@ class QueryIntent(BaseModel):
 
 @observe(name="check_semantic_cache")
 async def check_cache_node(state: GraphState, config: RunnableConfig) -> GraphState:
-    thread_id = config.get("configurable", {}).get("thread_id", "default")
-    query = state["query"]
-    cache_key = f"{thread_id}:{query}"
+    query = state["query"].strip().lower()
+    source_file = state.get("source_file") or "global"
+    
+    # NEW CACHE KEY: Query + Source File (Context-Aware, but shared globally across all users!)
+    cache_key = f"{source_file}:{query}"
     query_hash = hashlib.sha256(cache_key.encode()).hexdigest()
     
     cached_result = await db_manager.redis_cache.get(f"cache:{query_hash}")
@@ -37,19 +38,26 @@ async def check_cache_node(state: GraphState, config: RunnableConfig) -> GraphSt
 @observe(name="intent_routing")
 async def intent_node(state: GraphState) -> GraphState:
     settings = get_settings()
-    # UPDATED TO LLAMA-3.3-70B
     llm = ChatGroq(api_key=settings.GROQ_API_KEY, model_name="llama-3.3-70b-versatile")
-    structured_llm = llm.with_structured_output(QueryIntent)
+    
+    # FIX: Use JSON mode to stop Groq from hallucinating Llama tool schema types
+    structured_llm = llm.with_structured_output(QueryIntent, method="json_mode")
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a query analyzer. Determine if the user is asking about a specific page number."),
+        ("system", "You are a query analyzer. Respond ONLY with valid JSON. The key 'is_page_specific' MUST be a raw boolean (not a string). The key 'page_number' MUST be an integer or null (not a string)."),
         ("user", "{query}")
     ])
     
-    chain = prompt | structured_llm
-    result = await chain.ainvoke({"query": state["query"]})
-    
-    return {"page_number": result.page_number if result.is_page_specific else None}
+    try:
+        chain = prompt | structured_llm
+        result = await chain.ainvoke({"query": state["query"]})
+        page_num = result.page_number if result.is_page_specific else None
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[INTENT] Groq schema hallucination caught. Defaulting to None. Error: {e}")
+        page_num = None
+        
+    return {"page_number": page_num}
 
 @observe(name="qdrant_retrieval")
 async def retrieve_node(state: GraphState) -> GraphState:
@@ -58,16 +66,14 @@ async def retrieve_node(state: GraphState) -> GraphState:
         query=state["query"],
         limit=5,
         page_number=state.get("page_number"),
-        source_file=state.get("source_file")
+        file_hash=state.get("file_hash")  # FIX: Pass the file_hash into Qdrant
     )
     return {"retrieved_chunks": chunks}
 
 @observe(name="groq_generation")
 async def generate_node(state: GraphState, config: RunnableConfig) -> GraphState:
     settings = get_settings()
-    # UPDATED TO LLAMA-3.3-70B
     llm = ChatGroq(api_key=settings.GROQ_API_KEY, model_name="llama-3.3-70b-versatile")
-    
     langfuse_handler = CallbackHandler()
     
     context_str = "\n---\n".join(
@@ -95,8 +101,10 @@ async def generate_node(state: GraphState, config: RunnableConfig) -> GraphState
         for chunk in state.get("retrieved_chunks", [])
     ]
     
-    thread_id = config.get("configurable", {}).get("thread_id", "default")
-    cache_key = f"{thread_id}:{state['query']}"
+    # Save to the new context-aware global cache
+    query = state["query"].strip().lower()
+    source_file = state.get("source_file") or "global"
+    cache_key = f"{source_file}:{query}"
     query_hash = hashlib.sha256(cache_key.encode()).hexdigest()
     
     cache_data = json.dumps({"answer": response.content, "citations": [c.model_dump() for c in citations]})

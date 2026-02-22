@@ -1,11 +1,9 @@
-#routes.py
 import hashlib
 import os
 from fastapi import APIRouter, UploadFile, File, Depends
 from psycopg_pool import AsyncConnectionPool
-from redis import Redis
+from redis import Redis as SyncRedis
 from rq import Queue
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langchain_core.messages import HumanMessage
 
 from app.core.dependencies import get_db_pool, db_manager
@@ -57,8 +55,11 @@ async def upload_document(
     storage.upload_file(file_path, f"documents/{file_hash}_{file.filename}")
         
     settings = get_settings()
-    redis_conn = Redis.from_url(settings.REDIS_BROKER_URL)
+    # RQ requires a synchronous Redis connection
+    redis_conn = SyncRedis.from_url(settings.REDIS_BROKER_URL)
     q = Queue(connection=redis_conn)
+    
+    # We pass file_hash as the third argument to match your updated parser.py
     job = q.enqueue("worker.process_document", file_path, file.filename, file_hash, job_timeout=1200)
     
     return UploadResponse(
@@ -68,19 +69,18 @@ async def upload_document(
     )
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, db_pool: AsyncConnectionPool = Depends(get_db_pool)):
-    checkpointer = AsyncPostgresSaver(db_pool)
-    await checkpointer.setup()
-    
-    graph = build_graph(checkpointer)
+async def chat(request: ChatRequest):
+    # UPDATED: We use the globally initialized checkpointer, cutting out schema setup overhead
+    graph = build_graph(db_manager.checkpointer)
     
     config = {"configurable": {"thread_id": request.thread_id}}
     
+    # UPDATED: Mapping the file hash to source_file ensures context-aware routing
     initial_state = {
         "messages": [HumanMessage(content=request.query)],
         "query": request.query,
         "page_number": None,
-        "source_file": None
+        "file_hash": getattr(request, "file_hash", None)  # NEW: Map to file_hash, not source_file
     }
     
     result = await graph.ainvoke(initial_state, config)
@@ -103,6 +103,7 @@ async def get_document_status(
             )
             result = await cur.fetchone()
             if result:
-                return {"file_hash": file_hash, "status": result[0]}
+                # UPDATED: result is now a dictionary, so we access it by key name
+                return {"file_hash": file_hash, "status": result["status"]}
             
             return {"file_hash": file_hash, "status": "NOT_FOUND"}

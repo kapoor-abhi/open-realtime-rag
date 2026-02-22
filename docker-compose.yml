@@ -39,7 +39,8 @@ services:
 
   worker:
     build: .
-    command: python worker.py
+    # UPDATED: Use the official RQ CLI to bind the worker to the Redis container
+    command: rq worker --url redis://redis:6379 default
     env_file: .env
     depends_on:
       - postgres

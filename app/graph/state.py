@@ -9,6 +9,7 @@ class GraphState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     query: str
     page_number: Optional[int]
+    file_hash: Optional[str]  # NEW
     source_file: Optional[str]
     retrieved_chunks: List[dict]
     citations: List[SourceCitation]

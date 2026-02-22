@@ -2,7 +2,7 @@ fastapi==0.115.6
 uvicorn==0.34.0
 pydantic==2.10.6
 pydantic-settings==2.7.1
-docling==2.15.1
+PyMuPDF>=1.23.0
 langchain==0.3.18
 langchain-core==0.3.35
 langchain-cohere==0.3.4

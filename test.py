@@ -68,7 +68,8 @@ def run_tests():
     logger.info(f"QUESTION: '{query_1}'")
     
     start_time = time.time()
-    res = requests.post(f"{BASE_URL}/chat", json={"query": query_1, "thread_id": THREAD_ID})
+    # UPDATED: Passing file_hash so the context-aware cache and retriever know where to look
+    res = requests.post(f"{BASE_URL}/chat", json={"query": query_1, "thread_id": THREAD_ID, "file_hash": file_hash})
     req_time = time.time() - start_time
     
     if res.status_code == 200:
@@ -78,20 +79,20 @@ def run_tests():
 
     # --- TEST 5: CACHING ---
     start_time = time.time()
-    res = requests.post(f"{BASE_URL}/chat", json={"query": query_1, "thread_id": THREAD_ID})
+    res = requests.post(f"{BASE_URL}/chat", json={"query": query_1, "thread_id": THREAD_ID, "file_hash": file_hash})
     cache_time = time.time() - start_time
     if res.status_code == 200:
         logger.info(f"SUCCESS: CACHED Answer in {cache_time:.2f}s (Cache faster? {'YES' if cache_time < req_time else 'NO'})")
 
     # --- TEST 6: MEMORY ---
     query_memory = "Can you list just the Python libraries from your previous answer?"
-    res = requests.post(f"{BASE_URL}/chat", json={"query": query_memory, "thread_id": THREAD_ID})
+    res = requests.post(f"{BASE_URL}/chat", json={"query": query_memory, "thread_id": THREAD_ID, "file_hash": file_hash})
     if res.status_code == 200:
         logger.info(f"SUCCESS: Memory response -> {res.json()['answer']}")
 
     # --- TEST 7: INTENT ROUTING ---
     query_page = "Summarize the final model showdown on page 8."
-    res = requests.post(f"{BASE_URL}/chat", json={"query": query_page, "thread_id": THREAD_ID})
+    res = requests.post(f"{BASE_URL}/chat", json={"query": query_page, "thread_id": THREAD_ID, "file_hash": file_hash})
     if res.status_code == 200:
         logger.info(f"SUCCESS: Page routing -> {res.json()['answer']}")
 

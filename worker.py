@@ -1,75 +1,84 @@
 import asyncio
 import logging
-from redis import Redis
-from rq import Worker, Queue
+from rq import get_current_job
+from psycopg_pool import AsyncConnectionPool
+from qdrant_client import AsyncQdrantClient
+from psycopg.rows import dict_row
+
 from app.core.config import get_settings
-from app.core.dependencies import db_manager, init_services, close_services
 from app.services.parser import DocumentParser
 from app.services.vector_store import QdrantService
 
-# Transparent logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-def process_document(file_path: str, filename: str, file_hash: str):
-    asyncio.run(_process_document_async(file_path, filename, file_hash))
-
-async def _process_document_async(file_path: str, filename: str, file_hash: str):
+async def async_process_document(file_path: str, source_file_name: str, file_hash: str):
+    """The core asynchronous task that does the heavy lifting."""
     settings = get_settings()
-    await init_services(settings)
     
+    # IMPORTANT: Initialize fresh async clients INSIDE the worker process
+    # IMPORTANT: Initialize fresh async clients INSIDE the worker process
+    postgres_uri = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+    
+    # UPDATED: Set open=False and explicitly await pool.open()
+    db_pool = AsyncConnectionPool(postgres_uri, open=False, kwargs={"autocommit": True, "row_factory": dict_row})
+
+    await db_pool.open(wait=True)
+    
+    qdrant_client = AsyncQdrantClient(url=settings.QDRANT_URL)
     try:
-        logger.info(f"Worker starting to process {filename}...")
-        parser = DocumentParser()
-        chunks = parser.parse_document(file_path, filename)
-        
-        # --- THE FIX: FILTER OUT EMPTY CHUNKS ---
-        valid_chunks = []
-        for c in chunks:
-            # Only keep chunks that have actual string content
-            if c.text and c.text.strip():
-                valid_chunks.append(c)
-        
-        if not valid_chunks:
-            logger.error(f"No valid text chunks could be extracted from {filename}!")
-            raise ValueError("Empty document or extraction failed.")
-            
-        logger.info(f"Upserting {len(valid_chunks)} valid chunks to Qdrant (filtered out {len(chunks) - len(valid_chunks)} empty chunks)...")
-        # ----------------------------------------
-        
-        qdrant_service = QdrantService(db_manager.qdrant)
-        await qdrant_service.init_collection()
-        await qdrant_service.upsert_chunks(valid_chunks)
-        
-        async with db_manager.pool.connection() as conn:
+        # 1. Update status to PROCESSING
+        async with db_pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    "UPDATE documents SET status = 'COMPLETED' WHERE file_hash = %s",
-                    (file_hash,)
+                    "UPDATE documents SET status = %s WHERE file_hash = %s",
+                    ("PROCESSING", file_hash)
                 )
-        logger.info(f"Worker successfully finished {filename}.")
+        
+        # 2. Parse Document (Synchronous, but uses ThreadPool internally for speed)
+        # 2. Parse Document
+        parser = DocumentParser()
+        chunks = parser.parse_document(file_path, source_file_name, file_hash)
+        
+        # --- NEW: CHUNK TRANSPARENCY LOGGING ---
+        logger.info(f"\n{'='*60}\n[INDEXING] PREVIEWING CHUNKS FOR {source_file_name}\n{'='*60}")
+        for i, chunk in enumerate(chunks[:5]): # Show the first 5 chunks to ensure clean extraction
+            logger.info(f"Chunk {i+1} (Page {chunk.metadata.page_number} | {chunk.metadata.chunk_type}): {chunk.text[:120]}...")
+        logger.info(f"... {len(chunks)} total chunks created.\n{'='*60}")
+        # ---------------------------------------
+
+        # 3. Upsert to Qdrant (Asynchronous)
+        qdrant_service = QdrantService(qdrant_client)
+        await qdrant_service.init_collection()
+        await qdrant_service.upsert_chunks(chunks)
+        
+        # 4. Update status to COMPLETED
+        async with db_pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "UPDATE documents SET status = %s WHERE file_hash = %s",
+                    ("COMPLETED", file_hash)
+                )
+        logger.info(f"Successfully processed and indexed document: {source_file_name}")
         
     except Exception as e:
-        logger.error(f"Worker failed processing {filename}: {str(e)}")
-        # --- THE FAILSAFE: Tell the database we crashed ---
-        try:
-            async with db_manager.pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        "UPDATE documents SET status = 'FAILED' WHERE file_hash = %s",
-                        (file_hash,)
-                    )
-        except Exception as db_err:
-            logger.error(f"Could not update database with FAILED status: {db_err}")
-        # --------------------------------------------------
-        raise e
-        
+        logger.error(f"Failed to process document {source_file_name}: {e}")
+        # Mark as FAILED in database so the frontend doesn't poll forever
+        async with db_pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "UPDATE documents SET status = %s WHERE file_hash = %s",
+                    ("FAILED", file_hash)
+                )
     finally:
-        await close_services()
+        # Always clean up connections to prevent memory leaks in the worker
+        await db_pool.close()
+        await qdrant_client.close()
 
-if __name__ == '__main__':
-    settings = get_settings()
-    redis_conn = Redis.from_url(settings.REDIS_BROKER_URL)
-    queue = Queue('default', connection=redis_conn)
-    worker = Worker([queue], connection=redis_conn)
-    worker.work()
+def process_document(file_path: str, source_file_name: str, file_hash: str):
+    """
+    Synchronous wrapper for RQ. 
+    RQ workers are strictly synchronous, so we use asyncio.run() to bootstrap 
+    our async environment in an isolated event loop for this specific job.
+    """
+    logger.info(f"Worker picked up job for {source_file_name}...")
+    asyncio.run(async_process_document(file_path, source_file_name, file_hash))
