@@ -1,10 +1,10 @@
+#worker.py
 import asyncio
 import logging
 from rq import get_current_job
 from psycopg_pool import AsyncConnectionPool
 from qdrant_client import AsyncQdrantClient
 from psycopg.rows import dict_row
-
 from app.core.config import get_settings
 from app.services.parser import DocumentParser
 from app.services.vector_store import QdrantService

@@ -3,27 +3,25 @@ import requests
 import uuid
 import time
 
-# Use the internal Docker network URL for the API
 API_URL = "http://api:8000"
 
 st.set_page_config(page_title="OpenMultiRAG", page_icon="📚", layout="wide")
 
-# Initialize isolated session states for the specific user
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "active_file_hash" not in st.session_state:
-    st.session_state.active_file_hash = None
-if "active_filename" not in st.session_state:
-    st.session_state.active_filename = None
+# NEW: Use lists instead of single strings to hold multiple documents
+if "active_file_hashes" not in st.session_state:
+    st.session_state.active_file_hashes = []
+if "active_filenames" not in st.session_state:
+    st.session_state.active_filenames = []
 
 st.title("📚 OpenMultiRAG Chat")
-st.markdown("Upload a document, let the multimodal worker index it, and ask questions!")
+st.markdown("Upload documents, let the multimodal worker index them, and ask questions across all of them!")
 
-# --- SIDEBAR: DOCUMENT UPLOAD & STATUS ---
 with st.sidebar:
-    st.header("1. Upload Document")
+    st.header("1. Upload Document(s)")
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
     
     if uploaded_file is not None:
@@ -39,7 +37,6 @@ with st.sidebar:
                     
                     st.success(f"Status: {status_msg}")
                     
-                    # The Smart Poller UI
                     if status_msg == "Processing started":
                         status_placeholder = st.empty()
                         current_status = "PENDING"
@@ -56,24 +53,29 @@ with st.sidebar:
                         else:
                             status_placeholder.error(f"Worker failed with status: {current_status}")
                     
-                    # Set the active document for this user's session
-                    st.session_state.active_file_hash = file_hash
-                    st.session_state.active_filename = uploaded_file.name
+                    # NEW: Append to the list instead of overwriting!
+                    if file_hash not in st.session_state.active_file_hashes:
+                        st.session_state.active_file_hashes.append(file_hash)
+                        st.session_state.active_filenames.append(uploaded_file.name)
                 else:
                     st.error(f"Upload failed: {res.text}")
 
-    if st.session_state.active_filename:
-        st.info(f"**Active Document:**\n{st.session_state.active_filename}")
-        st.caption(f"Hash: `{st.session_state.active_file_hash[:8]}...`")
+    if st.session_state.active_filenames:
+        st.info("**Active Documents in this Chat:**")
+        for fname in st.session_state.active_filenames:
+            st.markdown(f"- {fname}")
+        if st.button("Clear Workspace"):
+            st.session_state.active_file_hashes = []
+            st.session_state.active_filenames = []
+            st.session_state.messages = []
+            st.rerun()
 
 # --- MAIN CHAT INTERFACE ---
 st.header("2. Chat with your Data")
 
-# Render existing chat history
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        # Render citations if the assistant provided them
         if "citations" in msg and msg["citations"]:
             with st.expander("View Sources & Citations"):
                 for cite in msg["citations"]:
@@ -81,23 +83,21 @@ for msg in st.session_state.messages:
                     if cite.get("image_path"):
                         st.image(cite["image_path"], caption=f"Source Image from Page {cite['page_number']}")
 
-# Chat Input field
-if prompt := st.chat_input("Ask a question about the document..."):
-    if not st.session_state.active_file_hash:
-        st.warning("Please upload and process a document first!")
+if prompt := st.chat_input("Ask a question about any uploaded document..."):
+    if not st.session_state.active_file_hashes:
+        st.warning("Please upload and process at least one document first!")
     else:
-        # 1. Add user message to UI
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # 2. Call the backend API
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
+                # NEW: Pass the ARRAY of hashes to the backend!
                 payload = {
                     "query": prompt,
                     "thread_id": st.session_state.thread_id,
-                    "file_hash": st.session_state.active_file_hash
+                    "active_file_hashes": st.session_state.active_file_hashes
                 }
                 
                 try:
@@ -117,7 +117,6 @@ if prompt := st.chat_input("Ask a question about the document..."):
                                 if cite.get("image_path"):
                                     st.image(cite["image_path"], caption=f"Source Image from Page {cite['page_number']}")
                     
-                    # Save assistant response to memory
                     st.session_state.messages.append({
                         "role": "assistant", 
                         "content": answer,

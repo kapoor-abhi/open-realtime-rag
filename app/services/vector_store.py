@@ -1,3 +1,4 @@
+#vector_store.py
 import uuid
 import logging
 from typing import List, Optional
@@ -43,28 +44,47 @@ class QdrantService:
             points=points
         )
 
-    # NEW: Accept file_hash instead of source_file
-    async def search(self, query: str, limit: int = 5, page_number: int = None, file_hash: str = None) -> List[dict]:
+    # NEW: Accept the active_file_hashes list instead of a single file_hash string
+    async def search(self, query: str, limit: int = 5, page_number: int = None, active_file_hashes: List[str] = None) -> List[dict]:
         logger.info(f"[RETRIEVAL] Generating Cohere embedding for query: '{query}'")
         
         query_embedding = await self.embeddings.aembed_query(query)
         
         filter_conditions = []
-        if page_number is not None:
-            filter_conditions.append(models.FieldCondition(key="page_number", match=models.MatchValue(value=page_number)))
-        if file_hash is not None:
-            filter_conditions.append(models.FieldCondition(key="file_hash", match=models.MatchValue(value=file_hash)))
+        
+        # --- 1. MULTI-DOC WORKSPACE FILTER ---
+        if active_file_hashes:
+            filter_conditions.append(
+                models.FieldCondition(
+                    key="file_hash", 
+                    # MatchAny allows Qdrant to search across multiple specified documents at once!
+                    match=models.MatchAny(any=active_file_hashes)
+                )
+            )
             
+        # --- 2. DYNAMIC PAGE LIMITS ---
+        if page_number is not None:
+            filter_conditions.append(
+                models.FieldCondition(
+                    key="page_number", 
+                    match=models.MatchValue(value=page_number)
+                )
+            )
+            # Fetch enough chunks to guarantee we reconstruct the whole page
+            fetch_limit = 20 
+            logger.info(f"[RETRIEVAL] Page specific query detected. Increasing limit to {fetch_limit} to capture full context.")
+        else:
+            fetch_limit = limit
+
         query_filter = models.Filter(must=filter_conditions) if filter_conditions else None
 
         try:
-            # FIX: Change 'source_file' to 'file_hash' in the logging statement!
-            logger.info(f"[RETRIEVAL] Querying Qdrant... (Filters: Page={page_number}, Hash={file_hash})")
+            logger.info(f"[RETRIEVAL] Querying Qdrant... (Filters: Page={page_number}, Hashes={active_file_hashes})")
             results = await self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 query_filter=query_filter,
-                limit=limit
+                limit=fetch_limit
             )
         except Exception as e:
             if "Not found" in str(e) or "doesn't exist" in str(e):
@@ -86,8 +106,8 @@ class QdrantService:
             }
             retrieved_chunks.append(chunk_data)
             
-            # Print exact scores, pages, and context snippets
-            logger.info(f"-> Similarity Score: {hit.score:.4f} | Page: {chunk_data['page_number']} | Type: {chunk_data['chunk_type']}")
-            logger.info(f"-> Content Preview: {chunk_data['text'][:150]}...\n{'-'*60}")
+            # Print which document the chunk came from to verify the Multi-Doc filter is working
+            logger.info(f"-> Score: {hit.score:.4f} | File: {chunk_data['source_file']} | Page: {chunk_data['page_number']}")
+            logger.info(f"-> Content Preview: {chunk_data['text'][:100]}...\n{'-'*60}")
             
         return retrieved_chunks

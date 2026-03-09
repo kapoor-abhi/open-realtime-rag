@@ -6,7 +6,7 @@ import sys
 logging.basicConfig(level=logging.INFO, format="\n%(asctime)s | %(levelname)s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 FILE_PATH = "supply_chain_analysis.pdf"
 THREAD_ID = "verbose_smart_test"
 

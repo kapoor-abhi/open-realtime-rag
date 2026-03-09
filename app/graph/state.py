@@ -1,5 +1,4 @@
 #state.py
-
 from typing import Annotated, TypedDict, List, Optional
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
@@ -8,8 +7,9 @@ from app.models.schemas import SourceCitation
 class GraphState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     query: str
+    rewritten_query: Optional[str]  # NEW: Stores the context-aware rewritten query
     page_number: Optional[int]
-    file_hash: Optional[str]  # NEW
+    active_file_hashes: List[str]  # Replaces file_hash
     source_file: Optional[str]
     retrieved_chunks: List[dict]
     citations: List[SourceCitation]

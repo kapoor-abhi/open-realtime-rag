@@ -1,5 +1,6 @@
+#schemas.py
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class UploadResponse(BaseModel):
     status: str
@@ -9,8 +10,11 @@ class UploadResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     thread_id: str
-    # NEW: Add file_hash to support our context-aware retrieval and caching
+    # Legacy support for a single document
     file_hash: Optional[str] = None
+    # NEW: Multi-document workspace support. 
+    # The frontend can pass an array of hashes for the documents active in the current chat.
+    active_file_hashes: Optional[List[str]] = Field(default_factory=list)
 
 class SourceCitation(BaseModel):
     page_number: int
@@ -23,7 +27,7 @@ class ChatResponse(BaseModel):
 
 class DocumentMetadata(BaseModel):
     source_file: str
-    file_hash: str  # NEW: We will filter Qdrant using this!
+    file_hash: str  
     page_number: int
     chunk_type: str
     image_path: Optional[str] = None
