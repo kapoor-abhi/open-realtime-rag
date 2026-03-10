@@ -8,7 +8,6 @@ OpenMultiRAG is an industry-grade, realtime Retrieval-Augmented Generation (RAG)
   <img src="screenshots/architecture.png" width="900"/>
 </p>
 
-
 ##  System Architecture
 
 The project consists of several interconnected components running asynchronously to deliver a smooth and resilient user experience:
@@ -35,7 +34,7 @@ The project consists of several interconnected components running asynchronously
 ###  Robust Memory & Session State (PostgreSQL Checkpointer)
 The system leverages LangGraph's `AsyncPostgresSaver` integrated tightly with PostgreSQL. This provides persistent thread-level memory. Users can ask follow-up questions, and the system inherently remembers earlier states and context blocks, seamlessly restoring conversational threads. 
 
-### ⚡ Smart Semantic Caching (Redis)
+###  Smart Semantic Caching (Redis)
 Beyond acting as a message broker for the RQ Worker, Redis is used as a highly efficient semantic cache layer. The system constructs a cache prefix deterministically based on the active workspace files. Identical subsequent requests across identical document scopes hit the Redis cache and bypass LLM generation natively, vastly reducing latency and API token costs.
 
 ###  Asynchronous Multimodal Worker Pipeline
