@@ -39,6 +39,9 @@ The system is designed with:
 
 The system is containerized using Docker Compose.
 
+![OpenMultiRAG Architecture](screenshots/architecture_minimal.png)
+
+
 ### Services
 
 - Frontend: Streamlit interface (`frontend.py`)  
