@@ -1,0 +1,335 @@
+[
+    {
+        "id": "PA-001",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "What was the aggregate forecast error achieved by the LightGBM model in the predictive analysis project?",
+        "ground_truth": "The LightGBM model achieved a -1.21% aggregate forecast error over a 28-day validation period.",
+        "relevant_pages": [
+            1,
+            5
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "The model achieved a -1.21% aggregate forecast error over a 28-day validation period, demonstrating exceptional reliability for high-level business planning."
+    },
+    {
+        "id": "PA-002",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "Why was Polars chosen over Pandas for data engineering in the M5 retail analytics project?",
+        "ground_truth": "Polars was chosen because it operates lazily — it constructs a logical query plan without executing it immediately. When .collect() is called, its Rust-based query optimizer executes everything in a parallelized, memory-efficient manner, allowing all transformations without ever holding the full intermediate dataset in memory. Pandas loads entire datasets into RAM eagerly, which causes memory overflow on the 58M+ row dataset.",
+        "relevant_pages": [
+            2,
+            3
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "Polars operates lazily. It constructs a logical query plan of all desired operations without executing them. When .collect() is called, its powerful query optimizer, written in Rust, executes the entire plan in a highly efficient, parallelized manner. This allowed us to perform all transformations without ever holding the full, intermediate dataset in memory."
+    },
+    {
+        "id": "PA-003",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "What is the item-level accuracy (MAE) of the LightGBM model in the predictive analysis project?",
+        "ground_truth": "The model achieved an item-level accuracy of 0.63 MAE, which demonstrates precision at the granular level essential for day-to-day shelf-stocking.",
+        "relevant_pages": [
+            5
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "Item-Level Accuracy (0.63 MAE): The model demonstrated precision at the granular level, essential for day-to-day shelf-stocking."
+    },
+    {
+        "id": "PA-004",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "reasoning",
+        "query": "What are the top three business insights derived from the feature importance analysis in the M5 forecasting project?",
+        "ground_truth": "1. Momentum is King: sales_rolling_mean_7 is the most important feature, meaning an item's last 7 days of performance is the single best predictor of tomorrow's demand. 2. Weekly Rhythms Dominate: weekday is a top predictor, indicating the business runs on a strong weekly cycle where marketing and promotions should align with high/low traffic days. 3. Price and Promotions Work: sell_price_imputed and event_name are highly influential, providing quantitative proof that pricing strategies and promotional events have a measurable impact on sales volume.",
+        "relevant_pages": [
+            5
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "Insight 1 (Momentum is King): sales_rolling_mean_7 is the most important feature. Insight 2 (Weekly Rhythms Dominate): weekday is a top predictor. Insight 3 (Price & Promotions Work): sell_price_imputed and event_name are highly influential."
+    },
+    {
+        "id": "PA-005",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "table_extraction",
+        "query": "According to the inventory policy table in the predictive analysis report, what are the safety stock, reorder point, and EOQ for the item HOBBIES_1_354_TX_3_validation?",
+        "ground_truth": "For HOBBIES_1_354_TX_3_validation: safety stock = 32 units, reorder point = 186 units, EOQ = 233 units. The average price is $23.67 and annual demand forecast is 8,064.69 units.",
+        "relevant_pages": [
+            6
+        ],
+        "difficulty": "hard",
+        "ragas_reference": "HOBBIES_1_354_TX_3_validation | 23.671965 | 8064.693675 | 32.0 | 186.0 | 233.0"
+    },
+    {
+        "id": "PA-006",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "reasoning",
+        "query": "Why was a time-based train-test split used instead of a random split in the M5 forecasting model validation?",
+        "ground_truth": "A random train-test split would cause data leakage, where the model would be unrealistically trained on future information (future data points could appear in the training set). A time-based split — training on all data up to a certain date and validating on the subsequent 28 days — correctly simulates a real-world deployment scenario where the model only knows the past.",
+        "relevant_pages": [
+            4
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "A random train-test split would be a fatal flaw, leading to data leakage where the model is unrealistically trained on future information. We implemented a rigorous time-based split, training the model on all data up to a certain point in time and validating its performance on a subsequent, unseen period."
+    },
+    {
+        "id": "PA-007",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "What were the three business parameters assumed for the inventory optimization model in the predictive analysis project?",
+        "ground_truth": "The three assumed parameters were: Ordering Cost of $20 per order, Annual Holding Cost of 25% of the item's value, and Supplier Lead Time of 7 days.",
+        "relevant_pages": [
+            6
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "Ordering Cost: Assumed at $20/order. Annual Holding Cost: Assumed at 25% of the item's value. Supplier Lead Time: Assumed at 7 days."
+    },
+    {
+        "id": "PA-008",
+        "source_doc": "predictive_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "How many rows did the M5 dataset contain and what technical challenge did this create?",
+        "ground_truth": "The dataset contained 30,490 items sold over 1,913 days, resulting in over 58 million rows. Loading this into memory with Pandas would instantly cause a memory overflow and crash the system.",
+        "relevant_pages": [
+            2
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "The dataset contained 30,490 items sold over 1,913 days, resulting in a potential feature space of over 58 million rows. Loading this into memory with traditional tools like Pandas would instantly cause a memory overflow and crash the system."
+    },
+    {
+        "id": "SC-001",
+        "source_doc": "supply_chain_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "What was the average time a package spends in transit with the carrier versus being processed by the seller in the Olist supply chain analysis?",
+        "ground_truth": "On average, a package spends 9.7 days in transit with the carrier, compared to just 2.4 days being processed by the seller. This means the carrier network is the bottleneck, not seller processing.",
+        "relevant_pages": [
+            2
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "A package spends 9.7 days in transit with the carrier, compared to just 2.4 days being processed by the seller. This crucial insight directs optimization efforts towards the carrier network, not just seller performance."
+    },
+    {
+        "id": "SC-002",
+        "source_doc": "supply_chain_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "What percentage of Olist orders are delivered on or before the estimated delivery date?",
+        "ground_truth": "Over 90% of Olist orders are delivered on or before the estimated delivery date, indicating a successful strategy of setting conservative estimates to enhance customer satisfaction.",
+        "relevant_pages": [
+            3
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "Over 90% of orders are delivered on or before the estimated delivery date. This indicates a successful strategy of setting conservative estimates to enhance customer satisfaction."
+    },
+    {
+        "id": "SC-003",
+        "source_doc": "supply_chain_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "What are the top 3 product categories by revenue in the Olist supply chain analysis?",
+        "ground_truth": "The top 3 product categories by revenue are: Health & Beauty, Watches & Gifts, and Bed, Bath & Table. These were identified as primary revenue drivers where inventory management should be most stringent.",
+        "relevant_pages": [
+            4
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "The top 3 product categories—Health & Beauty, Watches & Gifts, and Bed, Bath & Table—were identified as the primary revenue drivers, highlighting where inventory management should be most stringent."
+    },
+    {
+        "id": "SC-004",
+        "source_doc": "supply_chain_analysis.pdf",
+        "query_type": "reasoning",
+        "query": "What key insight was found about the relationship between vendor shipping speed and customer review scores in the Olist analysis?",
+        "ground_truth": "A strong negative correlation was found between a vendor's average shipping time and their average customer review score. Vendors who ship products faster consistently receive better ratings. This means speed directly drives customer satisfaction quality.",
+        "relevant_pages": [
+            4
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "A strong negative correlation was discovered between a vendor's average shipping time and their average customer review score. Vendors who ship products faster consistently receive better ratings."
+    },
+    {
+        "id": "SC-005",
+        "source_doc": "supply_chain_analysis.pdf",
+        "query_type": "reasoning",
+        "query": "Why was Facebook Prophet chosen as the baseline model in the Olist demand forecasting section?",
+        "ground_truth": "Facebook Prophet was chosen as the baseline because of its 'glass-box' nature — it automatically decomposes forecasts into interpretable components: overall business trend, weekly seasonality, and yearly seasonality (e.g., the Black Friday spike). This transparency is invaluable for building trust with the inventory team and explaining why the forecast looks the way it does, rather than just providing a number.",
+        "relevant_pages": [
+            5
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "Prophet's primary advantage is its 'glass-box' nature. It automatically decomposes the forecast into three intuitive components: the overall business trend, weekly seasonality, and yearly seasonality. This is invaluable for building trust with the inventory team and explaining why the forecast looks the way it does."
+    },
+    {
+        "id": "SC-006",
+        "source_doc": "supply_chain_analysis.pdf",
+        "query_type": "factual_single",
+        "query": "What is the average delivery time in São Paulo versus Roraima in the Olist logistics analysis?",
+        "ground_truth": "São Paulo (SP) has an average delivery time of approximately 8 days, while Roraima (RR) suffers from average delivery times exceeding 25 days — a disparity of over 17 days highlighting geographical logistics challenges.",
+        "relevant_pages": [
+            2
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "The home market of São Paulo (SP) boasts an average delivery time of ~8 days, while remote northern states like Roraima (RR) suffer from average delivery times exceeding 25 days."
+    },
+    {
+        "id": "BK-001",
+        "source_doc": "banking_project.pdf",
+        "query_type": "factual_single",
+        "query": "What AUC score did the LightGBM model achieve in the credit risk assessment project?",
+        "ground_truth": "The final LightGBM model achieved a Validation AUC of 0.7697 (approximately 0.77) on unseen data, demonstrating a strong ability to distinguish between safe and risky loan applicants.",
+        "relevant_pages": [
+            1,
+            5
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "The final LightGBM model achieved an Area Under the Curve (AUC) of 0.77 on unseen data, demonstrating a strong ability to distinguish between safe and risky applicants."
+    },
+    {
+        "id": "BK-002",
+        "source_doc": "banking_project.pdf",
+        "query_type": "factual_single",
+        "query": "What recall was achieved for the defaulted class in the banking credit risk model, and why was recall prioritized over precision?",
+        "ground_truth": "The model achieved a Recall of 0.69 for the defaulted class, meaning it identified 69% of all actual defaulters. Recall was prioritized over precision because missing a defaulter (false negative) is the costliest error in credit risk — it directly causes financial losses. Precision was 0.18, but even at 18% it represents a significant lift over the 8% base rate.",
+        "relevant_pages": [
+            5,
+            6
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "Recall (Defaulted): 0.69 - The model successfully identified 69% of all clients who would eventually default. Precision (Defaulted): 0.18 - When the model predicts a default, it is correct 18% of the time. While low, this is a significant lift over the 8% base rate and reflects the business trade-off to prioritize catching defaulters."
+    },
+    {
+        "id": "BK-003",
+        "source_doc": "banking_project.pdf",
+        "query_type": "reasoning",
+        "query": "How was the severe class imbalance handled in the banking credit risk dataset?",
+        "ground_truth": "The scale_pos_weight parameter in LightGBM was used, calculated as the ratio of non-defaulters to defaulters (approximately 11.5). This forces the model to heavily penalize mistakes on the minority defaulter class, directly optimizing for higher recall. This approach was chosen over simpler resampling methods as a conscious business decision to trade lower precision for higher, more valuable recall.",
+        "relevant_pages": [
+            5
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "Instead of simpler methods, the scale_pos_weight parameter was implemented. This was calculated as the ratio of non-defaulters to defaulters (~11.5). This technique forces the model to heavily penalize mistakes made on the minority (defaulter) class, thereby directly optimizing for higher recall."
+    },
+    {
+        "id": "BK-004",
+        "source_doc": "banking_project.pdf",
+        "query_type": "factual_single",
+        "query": "What anomaly was discovered in the DAYS_EMPLOYED feature of the banking dataset and how was it handled?",
+        "ground_truth": "The value 365,243 appeared in the DAYS_EMPLOYED column for over 55,000 applicants. Investigation revealed these applicants had a lower default rate, suggesting they represented a distinct stable group such as retirees. Instead of discarding it, this anomaly was converted into a new binary predictive feature that improved model performance.",
+        "relevant_pages": [
+            2
+        ],
+        "difficulty": "hard",
+        "ragas_reference": "A significant anomaly was discovered in the DAYS_EMPLOYED feature, where a value of 365243 appeared for over 55,000 applicants. Further investigation revealed these applicants had a lower default rate, suggesting they represented a distinct, stable group (e.g., retirees). This anomaly was converted into a valuable predictive feature."
+    },
+    {
+        "id": "BK-005",
+        "source_doc": "banking_project.pdf",
+        "query_type": "factual_single",
+        "query": "What are the top predictors of loan default according to the SHAP analysis in the banking project?",
+        "ground_truth": "The top predictors of default according to SHAP analysis are: external credit bureau scores (EXT_SOURCE_2 and EXT_SOURCE_3), the applicant's age (YEARS_BIRTH), ANNUITY_CREDIT_RATIO (which approximates repayment speed), and YEARS_EMPLOYED.",
+        "relevant_pages": [
+            1,
+            7
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "The most critical predictors of default are external credit bureau scores (EXT_SOURCE_2 & 3), the applicant's age (YEARS_BIRTH), and engineered financial strain metrics like the Annuity-to-Credit Ratio."
+    },
+    {
+        "id": "BK-006",
+        "source_doc": "banking_project.pdf",
+        "query_type": "factual_single",
+        "query": "What was the dataset size used in the banking credit risk project?",
+        "ground_truth": "The dataset contained 307,511 loan applications, with a severe class imbalance where only 8% of applicants defaulted.",
+        "relevant_pages": [
+            2
+        ],
+        "difficulty": "easy",
+        "ragas_reference": "Initial analysis of the 307,511 loan applications revealed several critical insights. The dataset was highly imbalanced, with only 8% of applicants defaulting."
+    },
+    {
+        "id": "BK-007",
+        "source_doc": "banking_project.pdf",
+        "query_type": "reasoning",
+        "query": "What three domain-specific features were engineered for the credit risk model and what does each measure?",
+        "ground_truth": "Three engineered features were: 1. CREDIT_INCOME_PERCENT — measures the loan amount relative to the applicant's income. 2. ANNUITY_INCOME_PERCENT — measures the burden of monthly loan payments on income. 3. ANNUITY_CREDIT_RATIO — approximates the loan's repayment term and speed. These features proved to be among the most important in the final model.",
+        "relevant_pages": [
+            5
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "CREDIT_INCOME_PERCENT: Measures the loan amount relative to income. ANNUITY_INCOME_PERCENT: Measures the burden of monthly payments on income. ANNUITY_CREDIT_RATIO: Approximates the loan's repayment term/speed. These engineered features proved to be among the most important in the final model."
+    },
+    {
+        "id": "COMP-001",
+        "source_doc": "all",
+        "query_type": "comparison",
+        "query": "All three projects use LightGBM. Compare how each project used it and what results they achieved.",
+        "ground_truth": "1. Predictive Analysis (M5 Retail): LightGBM was trained on 58M+ rows of retail sales data with lag/rolling/calendar features to forecast daily product demand. It achieved -1.21% aggregate error and 0.63 MAE at item level. 2. Supply Chain (Olist): LightGBM was used as the advanced challenger model against Facebook Prophet for e-commerce order demand forecasting, prioritizing performance over interpretability. 3. Banking (Credit Risk): LightGBM was used for binary classification of loan default probability on 307,511 applications, achieving AUC 0.77 and Recall 0.69 for defaulters, using scale_pos_weight to handle class imbalance.",
+        "relevant_pages": [
+            4,
+            5
+        ],
+        "difficulty": "hard",
+        "ragas_reference": "Multiple documents"
+    },
+    {
+        "id": "COMP-002",
+        "source_doc": "all",
+        "query_type": "comparison",
+        "query": "Compare the business problems addressed in the predictive analysis project and the supply chain analysis project.",
+        "ground_truth": "Predictive Analysis (M5 Retail): Addresses inventory management for a retailer with thousands of SKUs — specifically the dual risk of stockouts (lost revenue from underestimating demand) and overstocking (capital waste from overestimating demand). Solution is a three-phase pipeline producing Safety Stock, ROP, and EOQ per product. Supply Chain Analysis (Olist): Addresses three broader operational challenges — inventory mismatch, inconsistent customer experience due to unpredictable delivery times, and operational inefficiency from lack of visibility. Solution is a 'Control Tower' integrating logistics optimization, vendor performance monitoring, and demand forecasting. Both aim to optimize inventory, but the Olist project additionally addresses logistics and vendor management.",
+        "relevant_pages": [
+            1
+        ],
+        "difficulty": "hard",
+        "ragas_reference": "Multiple documents"
+    },
+    {
+        "id": "COMP-003",
+        "source_doc": "all",
+        "query_type": "comparison",
+        "query": "Which project achieved the highest dataset size and what techniques were used to handle it?",
+        "ground_truth": "The Predictive Analysis (M5 Retail) project had the largest dataset at 58+ million rows (30,490 items × 1,913 days). It was handled using Polars' LazyFrame API, which builds a logical query plan and executes it in one parallelized Rust pass without loading full intermediate data into memory — avoiding the memory overflow that Pandas would cause. The Banking project had 307,511 rows (much smaller) and used standard Pandas. The Supply Chain project processed ~100k orders using Pandas.",
+        "relevant_pages": [
+            1,
+            2
+        ],
+        "difficulty": "hard",
+        "ragas_reference": "Multiple documents"
+    },
+    {
+        "id": "COMP-004",
+        "source_doc": "all",
+        "query_type": "comparison",
+        "query": "How does the validation strategy differ between the predictive analysis project and the banking credit risk project?",
+        "ground_truth": "Predictive Analysis: Uses a strict time-based split — training on data up to day 1,885 and validating on days 1,886 to 1,913 (the final 28 days). This is critical to avoid data leakage in time-series forecasting where future information must never appear in the training set. Banking Credit Risk: Uses a standard random 80/20 train-validation split. A time-based split is less critical here because the prediction target (probability of default on an existing loan) is not a future time-series value — each loan application is an independent observation.",
+        "relevant_pages": [
+            4,
+            5
+        ],
+        "difficulty": "hard",
+        "ragas_reference": "Multiple documents"
+    },
+    {
+        "id": "CROSS-001",
+        "source_doc": "all",
+        "query_type": "multi_hop",
+        "query": "Across all three project reports, what is the common recommended next step related to hyperparameter optimization?",
+        "ground_truth": "All three projects recommend using Optuna for automated hyperparameter tuning as a next step to improve model performance. The Predictive Analysis project recommends 'Use automated tools like Optuna to further fine-tune the LightGBM model.' The Banking project recommends 'Employ automated tuning libraries like Optuna or GridSearch to systematically find the optimal set of model parameters.'",
+        "relevant_pages": [
+            7,
+            7
+        ],
+        "difficulty": "hard",
+        "ragas_reference": "Multiple documents"
+    },
+    {
+        "id": "CROSS-002",
+        "source_doc": "all",
+        "query_type": "multi_hop",
+        "query": "Which of the three projects explicitly addresses model explainability and what framework was used?",
+        "ground_truth": "The Banking Credit Risk project explicitly addresses model explainability using the SHAP (SHapley Additive exPlanations) framework. It uses SHAP for both global feature importance analysis (confirming which features drive default risk across all applicants) and local explainability (generating force plots for individual loan decisions). This is particularly important for regulatory compliance in banking. The other two projects use feature importance plots but do not use SHAP.",
+        "relevant_pages": [
+            7
+        ],
+        "difficulty": "medium",
+        "ragas_reference": "Using the SHAP framework, we can now explain the exact drivers behind any individual's risk score, moving from a 'black box' prediction to a transparent, auditable decision-making tool."
+    }
+]

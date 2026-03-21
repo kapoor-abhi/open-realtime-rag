@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:17
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -9,49 +10,120 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_net
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6380:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app_net
 
   qdrant:
     image: qdrant/qdrant:latest
+    restart: unless-stopped
     ports:
       - "6333:6333"
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+    networks:
+      - app_net
+
+  # MinIO: Local S3-compatible object storage (replaces Cloudflare R2)
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # MinIO Console (browser UI)
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_net
+
+  # Creates the bucket automatically on first boot
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      set -eu;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb --ignore-existing local/multirag;
+      mc anonymous set download local/multirag;
+      echo 'MinIO bucket ready.';
+      "
+    networks:
+      - app_net
 
   api:
     build: .
+    restart: unless-stopped
     ports:
-      - "8001:8000"
+      - "8010:8000"
     env_file: .env
     depends_on:
-      - postgres
-      - redis
-      - qdrant
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+    networks:
+      - app_net
 
   worker:
     build: .
-    # Uses the official RQ CLI to bind the worker to the Redis container
+    restart: unless-stopped
     command: rq worker --url redis://redis:6379 default
     env_file: .env
     depends_on:
-      - postgres
-      - redis
-      - qdrant
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+    networks:
+      - app_net
 
   frontend:
     build: .
-    # Runs the Streamlit UI on port 8501
+    restart: unless-stopped
     command: streamlit run frontend.py --server.address=0.0.0.0 --server.port=8501
     ports:
       - "8501:8501"
@@ -61,8 +133,16 @@ services:
     volumes:
       - .:/app
       - ./uploads:/app/uploads
+    networks:
+      - app_net
 
 volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  minio_data:
+
+networks:
+  app_net:
+    name: realtime-rag-advanced_app_net
+    driver: bridge
