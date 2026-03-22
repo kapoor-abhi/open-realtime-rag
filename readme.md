@@ -265,11 +265,3 @@ MINIO_BUCKET_NAME=multirag
 - "Compare the risk factors between document A and document B."
 - "Extract the quarterly growth data from the tables."
 
----
-
-## 11) Roadmap
-
-- [ ] Advanced visual reasoning using GPT-4o-mini/Gemini.
-- [ ] Direct citation linking to PDF viewer overlay.
-- [ ] Support for Audio and Video ingestion (Full Multimodal).
-- [ ] Distributed worker scaling for enterprise workloads.
