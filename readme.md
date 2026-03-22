@@ -1,18 +1,42 @@
-# OpenMultiRAG (Realtime Multimodal RAG)
+<div align="center">
+
+# OpenMultiRAG
+### Realtime Multimodal RAG System
+
+[![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://streamlit.io/)
+[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![PostgreSQL](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
+[![Qdrant](https://img.shields.io/badge/Qdrant-black?style=for-the-badge&logo=qdrant&logoColor=white)](https://qdrant.tech/)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://www.langchain.com/)
+[![Groq](https://img.shields.io/badge/Groq-f55036?style=for-the-badge&logo=groq&logoColor=white)](https://groq.com/)
+[![Cohere](https://img.shields.io/badge/Cohere-0050FF?style=for-the-badge&logo=cohere&logoColor=white)](https://cohere.ai/)
+[![Langfuse](https://img.shields.io/badge/Langfuse-000000?style=for-the-badge&logo=langfuse&logoColor=white)](https://langfuse.com/)
+[![MinIO](https://img.shields.io/badge/MinIO-C72E49?style=for-the-badge&logo=minio&logoColor=white)](https://min.io/)
+
+---
+
+**OpenMultiRAG** is a production-grade, realtime multimodal Retrieval-Augmented Generation (RAG) system. It seamlessly ingests complex PDF documents—extracting text, tables, and images—to provide a high-performance chat interface for deep technical queries and cross-document comparison.
+
+</div>
+
+---
 
 ## Table of Contents
 
-1. Executive Summary  
-2. System Architecture  
-3. End-to-End Data Flow  
-4. Engineering Deep Dive  
-5. Engineering Challenges and Solutions  
-6. Data Science Perspective  
-7. Tools and Infrastructure  
-8. Environment Configuration  
-9. Performance Characteristics  
-10. How to Run and Demo  
-11. Roadmap  
+1. [Executive Summary](#1-executive-summary)
+2. [System Architecture](#2-system-architecture)
+3. [End-to-End Data Flow](#3-end-to-end-data-flow)
+4. [Engineering Deep Dive](#4-engineering-deep-dive)
+5. [Engineering Challenges and Solutions](#5-engineering-challenges-and-solutions)
+6. [Data Science Perspective](#6-data-science-perspective)
+7. [Tools and Infrastructure](#7-tools-and-infrastructure)
+8. [Environment Configuration](#8-environment-configuration)
+9. [Performance Characteristics](#9-performance-characteristics)
+10. [How to Run and Demo](#10-how-to-run-and-demo)
+11. [Roadmap](#11-roadmap)
 
 ---
 
@@ -20,360 +44,232 @@
 
 OpenMultiRAG is a realtime multimodal RAG system that ingests PDFs, extracts text, tables, and images, indexes them, and provides a chat interface for querying across documents.
 
-Supported capabilities:
-- General queries across multiple documents  
-- Page specific queries  
-- Multi document comparison  
-- Source grounded answers with citations, including images  
+### Key Capabilities
+- **Multimodal Extraction**: Deep parsing of text, complex tables, and high-resolution images.
+- **Cross-Document Querying**: Analyze multiple documents simultaneously for comparative analysis.
+- **Context-Aware Retrieval**: Hybrid search combining semantic (dense) and keyword (sparse) methods.
+- **Source-Grounded Answers**: Reliable citations linked directly to document chunks and images.
 
-The system is designed with:
-- Background processing for heavy workloads  
-- Incremental indexing for efficiency  
-- Hybrid retrieval combining dense and sparse methods  
-- Semantic caching scoped to document context  
-- Observability and safety guardrails  
+### Design Principles
+- **Scalable Architecture**: Background processing using RQ workers for heavy ingestion workloads.
+- **Efficiency**: Incremental indexing ensures only new or changed content is processed.
+- **Observability**: End-to-end tracing and monitoring for production reliability.
+- **Safety**: Built-in guardrails for PII redaction and prompt injection detection.
 
 ---
 
 ## 2) System Architecture
 
-The system is containerized using Docker Compose.
+The entire system is containerized for seamless deployment using Docker Compose.
 
 ![OpenMultiRAG Architecture](screenshots/architecture_minimal.png)
 
+### Core Services
+- **Frontend**: Responsive Streamlit interface for user interaction.
+- **API Engine**: FastAPI backend managing orchestrations and lifecycles.
+- **Execution Worker**: RQ (Redis Queue) based background processing.
+- **Relational Storage**: PostgreSQL for metadata and structured data.
+- **Message Broker**: Redis for task queuing and realtime SSE communication.
+- **Vector Database**: Qdrant for high-dimensional embeddings and semantic caching.
+- **Object Storage**: MinIO for persistent storage of extracted images and PDFs.
 
-### Services
-
-- Frontend: Streamlit interface (`frontend.py`)  
-- API: FastAPI application (`app/main.py`, `app/api/routes.py`)  
-- Worker: RQ worker (`worker.py`)  
-- PostgreSQL: relational storage  
-- Redis: queue broker and pub sub messaging  
-- Qdrant: vector database  
-- MinIO: object storage for images  
-
-### External Services
-
-- Groq: LLM inference for query rewriting, intent detection, generation, and image captioning  
-- Cohere: embeddings and reranking  
-
-### Observability
-
-- Langfuse tracing with explicit flushing in worker processes  
+### Intelligent Integration
+- **LLM Inference**: Groq-powered models for query intent, rewriting, and image captioning.
+- **Embeddings & Reranking**: Cohere industrial-grade models for precision retrieval.
+- **Tracing**: Langfuse for granular observability into the LLM logic chain.
 
 ---
 
-## 3) End to End Data Flow
+## 3) End-to-End Data Flow
 
 ### Upload and Ingestion
+**Endpoint**: `POST /upload`
 
-Entry point: `POST /upload`
-
-Steps:
-1. Validate file type and size  
-2. Generate SHA 256 hash for document identity  
-3. Store PDF locally and in object storage  
-4. Enqueue background job for processing  
-5. Stream status updates using SSE  
+1. **Validation**: Rigorous file type and size checks.
+2. **Identity**: SHA-256 fingerprinting to prevent duplicate processing.
+3. **Persistence**: Concurrent storage in local cache and object storage.
+4. **Queueing**: Dispatch to background worker via Redis.
+5. **Monitoring**: Realtime status streaming via Server-Sent Events (SSE).
 
 ### Background Processing
+**Entry**: `worker.async_process_document`
 
-Entry point: `worker.async_process_document`
-
-Processing includes:
-- Text extraction using PyMuPDF  
-- Table extraction using pdfplumber  
-- Image extraction and captioning  
-- Upload images to object storage  
-
-Each unit is stored as a chunk with metadata including:
-- File hash  
-- Source file  
-- Page number  
-- Chunk type  
-- Image path when applicable  
+- **Text Extraction**: High-fidelity parsing via PyMuPDF.
+- **Table Extraction**: Heuristic-based parsing via pdfplumber.
+- **Visual Analysis**: Image extraction with automated Groq-based captioning.
+- **Storage**: Structured metadata including page numbers, file hashes, and visual paths.
 
 ### Incremental Indexing
+- **Chunk Hashing**: Unique ID generation per content unit.
+- **Delta Analysis**: Comparison against existing vector space.
+- **Synchronization**: CRUD operations (Insert/Update/Delete) based on document state.
 
-- Compute chunk hash for each unit  
-- Compare with existing index  
-- Skip unchanged chunks  
-- Insert new chunks  
-- Delete stale chunks  
+### Intelligent Query Pipeline
+**Endpoint**: `POST /chat`
 
-### Query Processing
-
-Entry point: `POST /chat`
-
-Workflow:
-1. Query rewriting using conversation history  
-2. Intent detection and target resolution  
-3. Semantic cache lookup  
-4. Hybrid retrieval using dense and sparse search  
-5. Reranking of results  
-6. Answer generation with citations  
-7. Store result in cache  
+1. **Query Rewriting**: Context-aware expansion using conversation history.
+2. **Intent Detection**: Advanced resolution of query scope (document vs. page).
+3. **Semantic Cache**: High-speed lookup for previously resolved queries.
+4. **Hybrid Retrieval**: Parallel execution of dense and sparse search.
+5. **RRF & Reranking**: Reciprocal Rank Fusion combined with Cohere reranking.
+6. **Synthesized Generation**: Multimodal answer generation with grounded citations.
 
 ---
 
 ## 4) Engineering Deep Dive
 
-### API Design
+### API Architecture
+- FastAPI lifecycle-managed dependencies for robust resource cleanup.
+- Dedicated health check endpoints (shallow and deep) for orchestration monitoring.
+- Native rate limiting and CORS enforcement for secure deployment.
 
-- FastAPI with lifecycle managed dependencies  
-- Initialization of database, vector store, and cache clients  
-- Health and deep health endpoints  
-- Rate limiting and CORS support  
+### Async Execution
+- Decoupled API/Worker architecture prevents UI blocking during heavy ingestion.
+- Redis Pub/Sub pattern enables sub-second status updates to the frontend.
 
-### Asynchronous Processing
+### Multimodal Pipeline
+- Type-specific chunking strategies (Text vs. Table vs. Image).
+- Automated summary generation for document-level grounding.
+- Metadata enrichment for lightning-fast filtered retrieval.
 
-- API handles requests  
-- Worker processes heavy tasks  
-- Redis pub sub enables realtime status updates  
+### Advanced Retrieval
+- **Dense**: Vector search for semantic conceptual matching.
+- **Sparse**: BM25 for precise keyword and technical term matching.
+- **Fusion**: Reciprocal Rank Fusion (RRF) to unify retrieval sources.
 
-### Multimodal Chunking
+### Semantic Caching
+- Vector-based cache lookup in Qdrant.
+- Advanced scoping to prevent context leakage across different documents.
+- Strict similarity thresholding to ensure answer accuracy.
 
-- Structured chunking by type and page  
-- Special handling for first page summaries  
-- Image captions indexed as searchable text  
-
-### Hybrid Retrieval
-
-- Dense retrieval using embeddings  
-- Sparse retrieval using BM25  
-- Fusion using Reciprocal Rank Fusion  
-- Final reranking  
-
-### Semantic Cache
-
-- Stored in Qdrant  
-- Scoped by document context  
-- Threshold based retrieval  
-
-### Guardrails
-
-- File validation  
-- Input sanitization  
-- Prompt injection detection  
-- PII redaction before caching  
-- Citation validation  
+### Guardrails & Safety
+- **Validation**: Multistage file and input validation.
+- **Security**: Prompt injection detection and PII redaction.
+- **Veracity**: citation cross-validation before final response delivery.
 
 ---
 
 ## 5) Engineering Challenges and Solutions
 
-### Query Rewriting Drift
-
-- Restrict rewriting input to user messages only  
-
-### Cache Scope Conflicts
-
-- Resolve intent before cache lookup  
-- Include document and page in cache scope  
-
-### Repeated Cache Initialization
-
-- Use a shared cache instance  
-
-### Table Extraction Errors
-
-- Apply stricter heuristics for validation  
-
-### Database Index Issues
-
-- Execute DDL statements individually  
-
-### Threading and Tracing Conflicts
-
-- Limit tracing to safe execution boundaries  
-
-### Telemetry Loss
-
-- Explicit flush before worker termination  
+| Challenge | Solution |
+| :--- | :--- |
+| **Query Rewriting Drift** | Input restriction to user-only messages for stable context. |
+| **Cache Scope Conflicts** | Intent-first resolution and metadata scoping in Qdrant. |
+| **Initial Resource Cost** | Implementation of shared singleton instances for cache clients. |
+| **Unstructured Table Noise** | Applied stricter validation heuristics and layout-aware parsing. |
+| **Race Conditions** | Individual execution of DDL statements for database migrations. |
+| **Telemetry Gaps** | Implementation of explicit flush boundaries in worker signals. |
 
 ---
 
 ## 6) Data Science Perspective
 
-### Retrieval First Approach
+### Retrieval-First RAG
+We prioritize the "R" in RAG, focusing on:
+- High-recall chunking strategies.
+- Contextual relevance through hybrid search.
+- Semantic integrity of extracted tables and captions.
 
-Focus on:
-- Retrieval accuracy  
-- Context relevance  
-- Chunk structure  
-- Citation correctness  
-
-### Hybrid Retrieval
-
-- Dense retrieval for semantic understanding  
-- Sparse retrieval for exact matches  
-- Combined approach improves robustness  
-
-### Incremental Indexing
-
-- Faster iteration  
-- Reduced compute cost  
-- Efficient experimentation  
-
-### Evaluation
-
-Files:
-- `golden_dataset.json`  
-- `ragas_evaluate.py`  
-
-Metrics:
-- Answer relevancy  
-- Faithfulness  
-- Context recall  
-- Context precision  
-
-### Failure Analysis
-
-- Parsing issues  
-- Retrieval mismatches  
-- Reranker performance  
-- Cache scope correctness  
-- Safety enforcement  
+### Evaluation Metrics
+Evaluated using the **RAGAS** framework and `golden_dataset.json`:
+- **Faithfulness**: Measuring hallucination rates.
+- **Answer Relevancy**: Evaluating user intent alignment.
+- **Context Precision/Recall**: Auditing the retrieval engine's accuracy.
 
 ---
 
 ## 7) Tools and Infrastructure
 
 ### Core Stack
+- **Languages**: Python 3.10
+- **Deployment**: Docker / Docker Compose
+- **Frameworks**: FastAPI, Streamlit
+- **Orchestration**: LangGraph, LangChain
 
-- Python 3.10  
-- Docker  
-- FastAPI  
-- Streamlit  
+### Database Layer
+- **Relational**: PostgreSQL
+- **Caching/Queue**: Redis
+- **Vector Space**: Qdrant
+- **Object Store**: MinIO
 
-### Orchestration
-
-- LangGraph  
-- LangChain  
-
-### Databases
-
-- PostgreSQL  
-- Redis  
-- Qdrant  
-- MinIO  
-
-### Retrieval
-
-- Cohere embeddings  
-- BM25  
-- Reciprocal Rank Fusion  
-- Cohere rerank  
-
-### LLM and Multimodal
-
-- Groq models  
-
-### Parsing
-
-- PyMuPDF  
-- pdfplumber  
-
-### Observability and Safety
-
-- Langfuse  
-- Rate limiting  
-- Guardrails  
-
-### Testing
-
-- requests  
-- rich  
-- RAGAS  
+### Retrieval & AI
+- **LLM**: Groq (Llama/Mixtral variants)
+- **Embeddings**: Cohere Multi-lingual v3
+- **Ranking**: BM25 (Sparse) + Cohere Rerank
 
 ---
 
 ## 8) Environment Configuration
 
-Create a `.env` file in the root directory with the following variables:
-— LLM / AI APIs —
+Generate a `.env` file in the project root with the following parameters:
 
-GROQ_API_KEY=””
-COHERE_API_KEY=””
-HUGGINGFACE_API_KEY=””
+```bash
+# --- LLM / AI APIs ---
+GROQ_API_KEY="your_groq_key"
+COHERE_API_KEY="your_cohere_key"
+HUGGINGFACE_API_KEY="your_hf_key"
 
-— Observability (Langfuse) —
+# --- Observability (Langfuse) ---
+LANGFUSE_SECRET_KEY="your_secret"
+LANGFUSE_PUBLIC_KEY="your_public"
+LANGFUSE_BASE_URL="https://cloud.langfuse.com"
 
-LANGFUSE_SECRET_KEY=””
-LANGFUSE_PUBLIC_KEY=””
-LANGFUSE_BASE_URL=“https://cloud.langfuse.com”
-
-— Postgres —
-
+# --- Postgres ---
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=multirag
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 
-— Redis —
-
+# --- Redis ---
 REDIS_BROKER_URL=redis://redis:6379/0
 REDIS_CACHE_URL=redis://redis:6379/1
 
-— Qdrant —
-
+# --- Vector / Object Storage ---
 QDRANT_URL=http://qdrant:6333
-
-— MinIO —
-
 MINIO_ENDPOINT_URL=http://minio:9000
 MINIO_ACCESS_KEY_ID=minioadmin
 MINIO_SECRET_ACCESS_KEY=minioadmin
 MINIO_BUCKET_NAME=multirag
-MINIO_PUBLIC_URL=http://localhost:9000/multirag
-
+```
 
 ---
 
 ## 9) Performance Characteristics
 
-Observed system performance under local and controlled testing conditions:
-
-- Average response latency: approximately 770 ms  
-- P95 latency: under 1.2 seconds  
-- Cache hit responses: typically under 300 ms  
-- Retrieval latency: consistently sub second  
-- Reranking overhead: minimal compared to retrieval gain  
-- Streaming responsiveness: near realtime via SSE  
-
-Performance improvements observed with:
-- Semantic caching reducing repeated query cost  
-- Incremental indexing reducing ingestion time  
-- Hybrid retrieval improving answer quality without significant latency increase  
+| Metric | Measured Value |
+| :--- | :--- |
+| **Average Response Latency** | ~770 ms |
+| **P95 Latency** | < 1.2 s |
+| **Cache Hit Response** | < 300 ms |
+| **Retrieval Speed** | Sub-second |
+| **SSE Realtime Offset** | Near-zero |
 
 ---
 
 ## 10) How to Run and Demo
 
-### Setup
+### Setup & Launch
+1. Configure credentials in `.env`.
+2. Build and start containers:
+   ```bash
+   docker compose up --build
+   ```
+3. Access Interfaces:
+   - **User Interface**: `http://localhost:8501`
+   - **API Documentation**: `http://localhost:8010/docs`
 
-1. Create `.env` file  
-2. Run: docker compose up –build
+### Example Interactions
+- "Summarize the key findings in the supply chain PDF."
+- "What do the charts on page 3 indicate regarding revenue?"
+- "Compare the risk factors between document A and document B."
+- "Extract the quarterly growth data from the tables."
 
-3. Access:
-- UI: http://localhost:8501  
-- API: http://localhost:8010/health  
+---
 
-### Example Queries
+## 11) Roadmap
 
-- Summarize uploaded documents  
-- What does page 1 contain  
-- Compare two documents  
-- Extract key numbers from tables  
-- Describe charts or diagrams  
-
-### Automated Tests
-
-`test_rag.py` includes:
-- Health checks  
-- Upload validation  
-- Status tracking  
-- Query testing  
-- Injection handling  
-- Multi turn conversation checks  
+- [ ] Advanced visual reasoning using GPT-4o-mini/Gemini.
+- [ ] Direct citation linking to PDF viewer overlay.
+- [ ] Support for Audio and Video ingestion (Full Multimodal).
+- [ ] Distributed worker scaling for enterprise workloads.
